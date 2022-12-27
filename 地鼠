@@ -1,0 +1,94 @@
+#include <Wire.h> // I2C程式庫
+#include <LiquidCrystal_I2C.h> // LCD_I2C模組程式庫
+// LCD I2C位址，默認為0x27或0x3F，依據背板的晶片不同而有差異，16、2為LCD顯示器大小。
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+int ledPin[]={12,11,10,9,8};
+int ButtonPin[]={7,6,5,4,3};
+boolean ledState[]={0,0,0,0,0};
+int n[5]={};
+unsigned long time_now;
+int i,j;
+int score=0;
+
+int buzzer = 13;
+//音階頻率
+int freq[] = {262,294,330,349,392};
+//輸入歌曲音調
+int melody[] = {5};
+//輸入節拍
+int beat[] = {1};
+void setup() {
+  // 初始化LCD
+  lcd.init();
+  lcd.backlight();
+  pinMode(buzzer,OUTPUT);
+  Serial.begin(9600);
+  
+  for(int i=0;i<5;i++){
+    pinMode(ledPin[i], OUTPUT);
+    pinMode(ButtonPin[i], INPUT_PULLUP);
+  }
+  
+  for(int i=0;i<5;i++){
+    digitalWrite(ledPin[i],LOW);
+  }
+  
+  time_now=millis();
+}
+
+
+void loop() {
+  //每1500ms執行一次
+  for(int i = 0 ; i < 1 ; i++){
+    tone(buzzer, freq[melody[i]-1]);
+    delay(beat[i]*250); 
+  noTone(buzzer);
+  delay(0);
+  }
+  
+  if(millis()>=time_now+1500){
+    
+    //先將所有LED關閉
+    for(i=0;i<5;i++){
+      digitalWrite(ledPin[i],LOW);
+    }
+    
+    time_now=millis();
+    
+    //執行亂數選取，並將選取到的LED點亮
+    for(i=0; i<3; i++){
+      do{
+        n[i]=random(5);
+        for(j=0; j<i; j++){
+          if(n[i]==n[j]){
+            break;
+          }
+        }      
+      }while(j!=i);
+      digitalWrite(ledPin[n[i]],HIGH);
+      ledState[i]=HIGH;
+    }
+  }
+
+  //檢查選取到的LED對應按鈕是否被按下，若被按下則分數加1
+  for(i=0;i<3;i++){
+    if(digitalRead(ButtonPin[n[i]])==LOW&&ledState[i]==HIGH){
+      digitalWrite(ledPin[n[i]],LOW);
+      ledState[i]=LOW;
+      score++;
+      }else if(digitalRead(ButtonPin[n[i]])==LOW&&ledState[i]==LOW){
+      digitalWrite(ledPin[n[i]],LOW);
+      ledState[i]=LOW;
+      score--;
+      }
+    }
+
+  //將分數顯示在LCD上
+  Serial.println(score);
+  lcd.setCursor(2, 0); // 從第一排的第三個位置開始顯示
+  lcd.print("score:");
+  lcd.print(score); 
+ 
+  
+}
